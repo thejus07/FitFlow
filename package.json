@@ -3,5 +3,5 @@
   "private": true,
   "version": "1.0.0",
   "workspaces": ["apps/*", "packages/*"],
-  "scripts": {"dev:api":"npm run dev -w @pulse/api","dev:web":"npm run dev -w @pulse/web","dev:mobile":"npm run start -w @pulse/mobile","db:migrate":"npm run migrate -w @pulse/database","db:seed":"npm run seed -w @pulse/database","build":"npm run build --workspaces --if-present && node -e \"fs.cpSync('apps/web/dist', 'dist', {recursive: true})\""}
+  "scripts": {"dev:api":"npm run dev -w @pulse/api","dev:web":"npm run dev -w @pulse/web","dev:mobile":"npm run start -w @pulse/mobile","db:migrate":"npm run migrate -w @pulse/database","db:seed":"npm run seed -w @pulse/database","build":"npm run build --workspaces --if-present && node -e \"fs.cpSync('apps/web/dist', 'dist', {recursive: true}); fs.cpSync('apps/web/dist', 'public', {recursive: true})\""}
 }
