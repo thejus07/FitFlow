@@ -1,7 +1,7 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
-import Fastify from 'fastify'; import cors from '@fastify/cors'; import jwt from '@fastify/jwt'; import bcrypt from 'bcryptjs'; import { PrismaClient, Role, MembershipStatus } from '@prisma/client'; import { attendanceTokenSchema, createMemberSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@pulse/shared';
+import Fastify from 'fastify'; import cors from '@fastify/cors'; import jwt from '@fastify/jwt'; import bcrypt from 'bcryptjs'; import nodemailer from 'nodemailer'; import { PrismaClient, Role, MembershipStatus } from '@prisma/client'; import { attendanceTokenSchema, createMemberSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@pulse/shared';
 
 let _db: PrismaClient | null = null;
 const getDb = () => { if (!_db) { _db = new PrismaClient(); } return _db; };
@@ -60,9 +60,11 @@ app.post('/auth/forgot-password', async (req, reply) => {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   await getDb().passwordResetToken.create({ data: { email: input.email, code, expiresAt } });
 
+  let sent = false;
+
   if (process.env.RESEND_API_KEY) {
     try {
-      await fetch('https://api.resend.com/emails', {
+      const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -72,15 +74,39 @@ app.post('/auth/forgot-password', async (req, reply) => {
           from: 'FitFlow <onboarding@resend.dev>',
           to: [input.email],
           subject: 'Your FitFlow Password Reset Code',
-          html: `<div style="font-family:sans-serif;padding:20px;"><h2>FitFlow Password Reset</h2><p>Your 6-digit password reset code is:</p><h1 style="letter-spacing:4px;color:#526f00;">${code}</h1><p>This code expires in 15 minutes.</p></div>`
+          html: `<div style="font-family:sans-serif;padding:24px;border:1px solid #eaedd5;border-radius:12px;max-width:500px;margin:auto;"><h2 style="color:#1c2415;margin-top:0;">FitFlow Password Reset</h2><p style="color:#555;">Enter the following 6-digit code to reset your password:</p><div style="background:#f4f6e8;padding:16px;border-radius:8px;text-align:center;margin:20px 0;"><h1 style="letter-spacing:6px;color:#4a6600;margin:0;font-size:32px;">${code}</h1></div><p style="color:#888;font-size:12px;">This code will expire in 15 minutes.</p></div>`
         })
       });
+      if (res.ok) sent = true;
     } catch (e) {
-      console.error('Failed to send email:', e);
+      console.error('Failed to send via Resend:', e);
     }
   }
 
-  return { message: 'Password reset code sent successfully.' };
+  if (!sent && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT || 465),
+        secure: true,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+      await transporter.sendMail({
+        from: `"FitFlow" <${process.env.SMTP_USER}>`,
+        to: input.email,
+        subject: 'Your FitFlow Password Reset Code',
+        html: `<div style="font-family:sans-serif;padding:24px;border:1px solid #eaedd5;border-radius:12px;max-width:500px;margin:auto;"><h2 style="color:#1c2415;margin-top:0;">FitFlow Password Reset</h2><p style="color:#555;">Enter the following 6-digit code to reset your password:</p><div style="background:#f4f6e8;padding:16px;border-radius:8px;text-align:center;margin:20px 0;"><h1 style="letter-spacing:6px;color:#4a6600;margin:0;font-size:32px;">${code}</h1></div><p style="color:#888;font-size:12px;">This code will expire in 15 minutes.</p></div>`
+      });
+      sent = true;
+    } catch (e) {
+      console.error('Failed to send via SMTP:', e);
+    }
+  }
+
+  return { message: sent ? 'Password reset code sent to your email.' : 'Password reset code generated. Check email credentials if not received.' };
 });
 
 app.post('/auth/reset-password', async (req, reply) => {
