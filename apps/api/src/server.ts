@@ -59,7 +59,28 @@ app.post('/auth/forgot-password', async (req, reply) => {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
   await getDb().passwordResetToken.create({ data: { email: input.email, code, expiresAt } });
-  return { message: 'Password reset code created successfully.', code, expiresAt };
+
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'FitFlow <onboarding@resend.dev>',
+          to: [input.email],
+          subject: 'Your FitFlow Password Reset Code',
+          html: `<div style="font-family:sans-serif;padding:20px;"><h2>FitFlow Password Reset</h2><p>Your 6-digit password reset code is:</p><h1 style="letter-spacing:4px;color:#526f00;">${code}</h1><p>This code expires in 15 minutes.</p></div>`
+        })
+      });
+    } catch (e) {
+      console.error('Failed to send email:', e);
+    }
+  }
+
+  return { message: 'Password reset code sent successfully.' };
 });
 
 app.post('/auth/reset-password', async (req, reply) => {
