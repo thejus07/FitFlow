@@ -2,6 +2,20 @@
   "name": "pulse-gym-platform",
   "private": true,
   "version": "1.0.0",
-  "workspaces": ["apps/*", "packages/*"],
-  "scripts": {"dev:api":"npm run dev -w @pulse/api","dev:web":"npm run dev -w @pulse/web","dev:mobile":"npm run start -w @pulse/mobile","db:migrate":"npm run migrate -w @pulse/database","db:seed":"npm run seed -w @pulse/database","build":"npm run build --workspaces --if-present && node scripts/copy-dist.cjs"}
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"api,web\" -c \"cyan.bold,green.bold\" \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev -w @pulse/api",
+    "dev:web": "npm run dev -w @pulse/web",
+    "dev:mobile": "npm run start -w @pulse/mobile",
+    "db:migrate": "npm run migrate -w @pulse/database",
+    "db:seed": "npm run seed -w @pulse/database",
+    "build": "npm run build --workspaces --if-present && node scripts/copy-dist.cjs"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
 }
