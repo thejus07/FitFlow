@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  PAUSED
+}
+
+enum PaymentStatus {
+  PAID
+  DUE
+  PENDING
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  users     User[]
+  members   Member[]
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           Role
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  member         Member?
+  createdAt      DateTime     @default(now())
+}
+
+model Member {
+  id             String              @id @default(uuid())
+  userId         String              @unique
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  user           User                @relation(fields: [userId], references: [id])
+  membership     Membership?
+  attendance     Attendance[]
+  qrToken        QrToken?
+  workouts       WorkoutAssignment[]
+  diets          DietPlan[]
+  payments       Payment[]
+}
+
+model Membership {
+  id            String           @id @default(uuid())
+  memberId      String           @unique
+  member        Member           @relation(fields: [memberId], references: [id])
+  plan          String
+  status        MembershipStatus @default(ACTIVE)
+  startDate     DateTime
+  expiryDate    DateTime
+  amount        Int
+  paymentStatus PaymentStatus    @default(PAID)
+}
+
+model QrToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  memberId  String   @unique
+  member    Member   @relation(fields: [memberId], references: [id])
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id])
+  checkedInAt DateTime @default(now())
+
+  @@index([memberId, checkedInAt])
+}
+
+model WorkoutAssignment {
+  id          String   @id @default(uuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id])
+  title       String
+  exercises   Json
+  assignedFor DateTime @default(now())
+}
+
+model DietPlan {
+  id       String   @id @default(uuid())
+  memberId String
+  member   Member   @relation(fields: [memberId], references: [id])
+  calories Int
+  protein  Int
+  carbs    Int
+  fat      Int
+  meals    Json
+}
+
+model Payment {
+  id       String        @id @default(uuid())
+  memberId String
+  member   Member        @relation(fields: [memberId], references: [id])
+  amount   Int
+  status   PaymentStatus
+  dueDate  DateTime
+  paidAt   DateTime?
+  provider String?
+}
+
+model Notification {
+  id             String   @id @default(uuid())
+  organizationId String
+  title          String
+  body           String
+  audience       Role?
+  userId         String?
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, code])
+}
