@@ -2,8 +2,8 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
 import Fastify from 'fastify'; import cors from '@fastify/cors'; import jwt from '@fastify/jwt'; import bcrypt from 'bcryptjs'; import { PrismaClient, Role, MembershipStatus } from '@prisma/client'; import { attendanceTokenSchema, createMemberSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@pulse/shared';
-const db=new PrismaClient(), app=Fastify({logger:true}); const secret=process.env.JWT_SECRET||'fitflow_default_jwt_secret_key_2026';
-await app.register(cors,{origin:process.env.WEB_ORIGIN?.split(',')??true}); await app.register(jwt,{secret});
+const db=new PrismaClient(), app=Fastify({logger:true});
+const initPromise=(async()=>{const secret=process.env.JWT_SECRET||'fitflow_default_jwt_secret_key_2026';await app.register(cors,{origin:process.env.WEB_ORIGIN?.split(',')??true});await app.register(jwt,{secret})})();
 type Claims={id:string;role:Role;organizationId:string}; const auth=async(req:any,reply:any)=>{try{await req.jwtVerify()}catch{reply.code(401).send({error:'Unauthorized'})}}; const admin=async(req:any,reply:any)=>{await auth(req,reply);if(reply.sent)return;if((req.user as Claims).role!==Role.ADMIN)reply.code(403).send({error:'Admin access required'})}; const orgFilter=(req:any)=>({organizationId:(req.user as Claims).organizationId});
 const session=(user:{id:string;name:string;role:Role;organizationId:string})=>({token:app.jwt.sign({id:user.id,role:user.role,organizationId:user.organizationId}),user:{id:user.id,name:user.name,role:user.role,organizationId:user.organizationId}});
 app.get('/',async()=>({status:'ok',service:'FitFlow API'})); app.get('/health',async()=>({status:'ok',timestamp:new Date().toISOString()}));
@@ -24,5 +24,5 @@ app.post('/attendance/check-in',{preHandler:admin},async(req:any,reply)=>{const 
 app.get('/notifications',{preHandler:auth},async(req:any)=>db.notification.findMany({where:{organizationId:req.user.organizationId,OR:[{audience:req.user.role},{userId:req.user.id},{audience:null}]},orderBy:{createdAt:'desc'}})); app.post('/notifications/:id/read',{preHandler:auth},async(req:any)=>db.notification.update({where:{id:req.params.id},data:{readAt:new Date()}}));
 app.setErrorHandler((e,_req,reply)=>reply.code((e as any).statusCode||400).send({error:(e as Error).message||'Request failed'}));
 if(!process.env.VERCEL){await app.listen({port:Number(process.env.PORT||4000),host:'0.0.0.0'})}
-export { app };
+export { app, initPromise };
 
