@@ -1,7 +1,6 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-dotenv.config({ path: path.resolve(import.meta.dirname, '../../../.env') });
+dotenv.config();
 import Fastify from 'fastify'; import cors from '@fastify/cors'; import jwt from '@fastify/jwt'; import bcrypt from 'bcryptjs'; import { PrismaClient, Role, MembershipStatus } from '@prisma/client'; import { attendanceTokenSchema, createMemberSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '@pulse/shared';
 const db=new PrismaClient(), app=Fastify({logger:true}); const secret=process.env.JWT_SECRET||'fitflow_default_jwt_secret_key_2026';
 await app.register(cors,{origin:process.env.WEB_ORIGIN?.split(',')??true}); await app.register(jwt,{secret});
