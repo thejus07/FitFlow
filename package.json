@@ -13,10 +13,12 @@
     "dev:mobile": "npm run start -w @pulse/mobile",
     "db:migrate": "npm run migrate -w @pulse/database",
     "db:seed": "npm run seed -w @pulse/database",
-    "postinstall": "prisma generate --schema=packages/database/prisma/schema.prisma",
+    "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma || true",
     "build": "npm run build --workspaces --if-present && node scripts/copy-dist.cjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "@prisma/client": "^6.5.0",
+    "concurrently": "^10.0.5",
+    "prisma": "^6.5.0"
   }
 }
